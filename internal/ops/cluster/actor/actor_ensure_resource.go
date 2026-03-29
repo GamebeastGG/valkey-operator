@@ -374,6 +374,10 @@ func (a *actorEnsureResource) ensureService(ctx context.Context, cluster types.C
 		if ret := a.ensureValkeyPodService(ctx, cluster, logger); ret != nil {
 			return ret
 		}
+	default:
+		if ret := a.ensureValkeyPodService(ctx, cluster, logger); ret != nil {
+			return ret
+		}
 	}
 	return nil
 }
@@ -613,7 +617,7 @@ func (a *actorEnsureResource) ensureValkeyPodService(ctx context.Context, cluste
 
 func (a *actorEnsureResource) cleanUselessService(ctx context.Context, cluster types.ClusterInstance, logger logr.Logger) *actor.ActorResult {
 	cr := cluster.Definition()
-	if cr.Spec.Access.ServiceType != corev1.ServiceTypeLoadBalancer && cr.Spec.Access.ServiceType != corev1.ServiceTypeNodePort {
+	if cr.Spec.Access.ServiceType == corev1.ServiceTypeExternalName {
 		return nil
 	}
 
