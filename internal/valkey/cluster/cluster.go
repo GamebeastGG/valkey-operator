@@ -669,7 +669,7 @@ func (c *ValkeyCluster) IsResourceFullfilled(ctx context.Context) (bool, error) 
 		stsName := clusterbuilder.ClusterStatefulSetName(c.GetName(), i)
 		resources[stsKey] = append(resources[stsKey], stsName)
 	}
-	if c.Spec.Access.ServiceType == corev1.ServiceTypeLoadBalancer || c.Spec.Access.ServiceType == corev1.ServiceTypeNodePort {
+	if c.Spec.Access.ServiceType != corev1.ServiceTypeExternalName {
 		for i := 0; i < int(c.Spec.Replicas.Shards); i++ {
 			stsName := clusterbuilder.ClusterStatefulSetName(c.GetName(), i)
 			for j := 0; j < int(c.Spec.Replicas.ReplicasOfShard); j++ {
