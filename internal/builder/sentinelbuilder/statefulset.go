@@ -174,16 +174,7 @@ func buildInitContainer(sen *v1alpha1.Sentinel, _ []corev1.EnvVar) (*corev1.Cont
 				Value: string(sen.Spec.Access.IPFamilyPrefer),
 			},
 		},
-		Resources: corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("200m"),
-				corev1.ResourceMemory: resource.MustParse("200Mi"),
-			},
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("200m"),
-				corev1.ResourceMemory: resource.MustParse("200Mi"),
-			},
-		},
+		Resources:       initContainerResources(sen.Spec.Resources),
 		SecurityContext: builder.GetSecurityContext(sen.Spec.SecurityContext),
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: ValkeyDataVolumeName, MountPath: ValkeyDataVolumeMountPath},
@@ -258,16 +249,7 @@ func buildAgentContainer(sen *v1alpha1.Sentinel, envs []corev1.EnvVar) (*corev1.
 		Env:             envs,
 		Command:         []string{"/opt/valkey-helper", "sentinel", "agent"},
 		SecurityContext: builder.GetSecurityContext(sen.Spec.SecurityContext),
-		Resources: corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("100m"),
-				corev1.ResourceMemory: resource.MustParse("100Mi"),
-			},
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse("100m"),
-				corev1.ResourceMemory: resource.MustParse("100Mi"),
-			},
-		},
+		Resources: agentContainerResources(sen.Spec.Resources),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      ValkeyDataVolumeName,
@@ -291,6 +273,56 @@ func buildAgentContainer(sen *v1alpha1.Sentinel, envs []corev1.EnvVar) (*corev1.
 		container.VolumeMounts = append(container.VolumeMounts, vol)
 	}
 	return &container, nil
+}
+
+// initContainerResources derives init container resources from sentinel spec resources.
+// Falls back to defaults if sentinel resources are not set.
+func initContainerResources(res corev1.ResourceRequirements) corev1.ResourceRequirements {
+	defaults := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+			corev1.ResourceMemory: resource.MustParse("200Mi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("200m"),
+			corev1.ResourceMemory: resource.MustParse("200Mi"),
+		},
+	}
+	return maxResources(defaults, res)
+}
+
+// agentContainerResources derives agent container resources from sentinel spec resources.
+// Uses half the sentinel CPU (minimum 100m) and a fixed 100Mi memory.
+func agentContainerResources(res corev1.ResourceRequirements) corev1.ResourceRequirements {
+	defaults := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
+		},
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("100m"),
+			corev1.ResourceMemory: resource.MustParse("100Mi"),
+		},
+	}
+	return maxResources(defaults, res)
+}
+
+// maxResources returns resource requirements using the greater of default or spec for each resource.
+func maxResources(defaults, spec corev1.ResourceRequirements) corev1.ResourceRequirements {
+	result := defaults.DeepCopy()
+	for _, rt := range []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory} {
+		if v, ok := spec.Requests[rt]; ok {
+			if cur, exists := result.Requests[rt]; !exists || v.Cmp(cur) > 0 {
+				result.Requests[rt] = v
+			}
+		}
+		if v, ok := spec.Limits[rt]; ok {
+			if cur, exists := result.Limits[rt]; !exists || v.Cmp(cur) > 0 {
+				result.Limits[rt] = v
+			}
+		}
+	}
+	return *result
 }
 
 func buildEnvs(sen *v1alpha1.Sentinel) []corev1.EnvVar {
