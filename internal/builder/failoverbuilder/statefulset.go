@@ -398,14 +398,17 @@ func buildAffinity(affinity *corev1.Affinity, labels map[string]string) *corev1.
 		return affinity
 	}
 
-	// Return anti-affinity
+	// Default to soft anti-affinity so Autopilot doesn't enforce elevated CPU minimums
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
 				{
-					TopologyKey: builder.HostnameTopologyKey,
-					LabelSelector: &metav1.LabelSelector{
-						MatchLabels: labels,
+					Weight: 100,
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						TopologyKey: builder.HostnameTopologyKey,
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: labels,
+						},
 					},
 				},
 			},

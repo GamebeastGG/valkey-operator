@@ -5,12 +5,12 @@ kind: Kustomization
 images:
 - name: controller
   newName: ghcr.io/gamebeastgg/valkey-operator
-  newTag: v1.1.0-fix4
+  newTag: v1.1.0-fix5
 commonAnnotations:
   defaultExporterImageName: oliver006/redis_exporter
   defaultExporterVersion: v1.67.0-alpine
   defaultRegistry: ""
   operatorImageName: ghcr.io/gamebeastgg/valkey-operator
-  operatorVersion: v1.1.0-fix4
+  operatorVersion: v1.1.0-fix5
   valkeyImageName: valkey/valkey
   valkeyVersionMap: '{}'

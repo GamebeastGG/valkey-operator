@@ -175,5 +175,14 @@ func Access(ctx context.Context, client *kubernetes.Clientset, namespace, podNam
 cluster-announce-port %d
 cluster-announce-bus-port %d`, announceIp, announcePort, announceIPort)
 
+	// For ClusterIP services, also announce the stable DNS hostname so that
+	// cluster nodes can reconnect after pod restarts (new IPs) via DNS resolution.
+	if serviceType == corev1.ServiceTypeClusterIP {
+		if svcName := os.Getenv("SERVICE_NAME"); svcName != "" {
+			hostname := fmt.Sprintf("%s.%s.%s.svc.cluster.local", podName, svcName, namespace)
+			configContent += fmt.Sprintf("\ncluster-announce-hostname %s", hostname)
+		}
+	}
+
 	return os.WriteFile("/data/announce.conf", []byte(configContent), 0644) // #nosec: G306
 }
