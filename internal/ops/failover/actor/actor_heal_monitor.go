@@ -205,6 +205,11 @@ func (a *actorHealMaster) Do(ctx context.Context, val types.Instance) *actor.Act
 			addr := net.JoinHostPort(masterCandidate.DefaultIP().String(), strconv.Itoa(masterCandidate.Port()))
 			logger.Info("setup master node", "addr", addr)
 			inst.SendEventf(corev1.EventTypeWarning, config.EventSetupMaster, "setup sentinels with master %s", addr)
+			// Give sentinels time to confirm the master connection before the next
+			// reconcile cycle. Without this delay, the controller re-checks immediately
+			// and sees "disconnected" (sentinel hasn't completed its first ping yet),
+			// triggering another HealMonitor in a tight loop.
+			return actor.RequeueAfter(time.Second * 10)
 		} else {
 			err := fmt.Errorf("cannot find any usable master node")
 			logger.Error(err, "failed to setup master node")

@@ -258,8 +258,10 @@ func findDuplicateSentinelNode(ctx context.Context, name string, node types.Sent
 	ids := map[string]struct{}{}
 	// check duplicate sentinel nodes
 	for _, b := range brothers {
-		// sentinel nodes will not set node to o_down, always keep in s_down status
-		if strings.Contains(b.Flags, "o_down") || strings.Contains(b.Flags, "s_down") {
+		// NOTE: sentinel nodes only use s_down (never o_down). A transient s_down during
+		// startup/restart is normal and should not trigger a full monitoring reset, as that
+		// creates a bootstrapping deadlock where sentinels can never stabilize.
+		if strings.Contains(b.Flags, "o_down") {
 			return true, nil
 		}
 		if _, ok := ids[b.RunId]; ok {
